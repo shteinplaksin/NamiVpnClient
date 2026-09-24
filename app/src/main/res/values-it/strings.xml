@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="logcat">Esporta informazioni di debug</string>
+    <string name="version_x">Versione (%s)</string>
+    <string name="app_version">Versione</string>
+    <string name="oss_licenses">Licenze open source</string>
+    <string name="telegram">Canale di aggiornamento di Telegram</string>
+    <string name="github">Codice sorgente</string>
+    <string name="project">Progetto</string>
+    <string name="app_desc">La toolchain proxy universale per Android, scritta in Kotlin.</string>
+    <string name="lan_permission_required_summary">Android richiede l’autorizzazione per l’accesso alla rete locale affinché questo proxy possa accettare connessioni dalla LAN. Finché non viene concessa, resta disponibile su questo dispositivo.</string>
+    <string name="lan_permission_grant">Concedi l’autorizzazione per la rete locale</string>
+    <string name="lan_permission_denied_title">Autorizzazione per la rete locale negata</string>
+    <string name="lan_permission_denied_message">L’accesso alla LAN resta disattivato. Consenti l’accesso alla rete locale nella richiesta di autorizzazione di Android per accettare connessioni da altri dispositivi.</string>
+    <string name="lan_permission_open_settings">Impostazioni app</string>
+</resources>

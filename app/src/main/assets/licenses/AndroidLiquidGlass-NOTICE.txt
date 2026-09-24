@@ -1,0 +1,17 @@
+Third-Party Attribution: AndroidLiquidGlass
+
+Project: AndroidLiquidGlass by Kyant0 (Kyant)
+Copyright: Copyright 2025 Kyant
+Source project: https://github.com/Kyant0/AndroidLiquidGlass/tree/kmp
+License: Apache License, Version 2.0
+License text: AndroidLiquidGlass-APACHE-2.0.txt (verbatim copy of upstream LICENSE)
+
+Adapted component references:
+- LiquidButton.kt: https://github.com/Kyant0/AndroidLiquidGlass/blob/kmp/app/src/commonMain/kotlin/com/kyant/backdrop/catalog/components/LiquidButton.kt
+- LiquidToggle.kt: https://github.com/Kyant0/AndroidLiquidGlass/blob/kmp/app/src/commonMain/kotlin/com/kyant/backdrop/catalog/components/LiquidToggle.kt
+- LiquidBottomTabs.kt: https://github.com/Kyant0/AndroidLiquidGlass/blob/kmp/app/src/commonMain/kotlin/com/kyant/backdrop/catalog/components/LiquidBottomTabs.kt
+
+LiquidSlider.kt was reviewed but not ported because this application has no corresponding Compose slider control:
+https://github.com/Kyant0/AndroidLiquidGlass/blob/kmp/app/src/commonMain/kotlin/com/kyant/backdrop/catalog/components/LiquidSlider.kt
+
+The referenced Compose component visuals and interaction behavior were adapted for Nami's theme modes, accessibility semantics, Android capability tiers, and safe backdrop sampling topology.

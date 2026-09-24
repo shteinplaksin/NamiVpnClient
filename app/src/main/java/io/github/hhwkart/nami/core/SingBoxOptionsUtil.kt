@@ -1,0 +1,193 @@
+package io.github.hhwkart.nami.core
+
+import io.github.hhwkart.nami.database.DataStore
+import io.github.hhwkart.nami.core.SingBoxOptions.RuleSet
+
+object SingBoxOptionsUtil {
+
+    fun domainStrategy(tag: String): String {
+        fun auto2(key: String, newS: String): String {
+            return (DataStore.configurationStore.getString(key) ?: "").replace("auto", newS)
+        }
+        return when (tag) {
+            "dns-remote" -> {
+                auto2("domain_strategy_for_remote", "")
+            }
+
+            "dns-direct" -> {
+                auto2("domain_strategy_for_direct", "")
+            }
+
+            // server
+            else -> {
+                auto2("domain_strategy_for_server", "prefer_ipv4")
+            }
+        }
+    }
+
+}
+
+fun SingBoxOptions.DNSRule_DefaultOptions.makeSingBoxRule(list: List<String>) {
+    if (rule_set == null) rule_set = mutableListOf<String>()
+    if (domain == null) domain = mutableListOf<String>()
+    if (domain_suffix == null) domain_suffix = mutableListOf<String>()
+    if (domain_regex == null) domain_regex = mutableListOf<String>()
+    if (domain_keyword == null) domain_keyword = mutableListOf<String>()
+    list.forEach { raw ->
+        val it = raw.trim()
+        val lower = it.lowercase()
+        if (lower == "geosite:ru") {
+            rule_set.plusAssign("geosite:category-ru")
+            rule_set.plusAssign("geosite:tld-ru")
+        } else if (lower == "geosite:ir") {
+            rule_set.plusAssign("geosite:category-ir")
+        } else if (lower.startsWith("geosite:")) {
+            rule_set.plusAssign(it)
+        } else if (lower.startsWith("full:")) {
+            domain.plusAssign(it.substring(5).lowercase())
+        } else if (lower.startsWith("domain:")) {
+            domain_suffix.plusAssign(it.substring(7).lowercase())
+        } else if (lower.startsWith("regexp:")) {
+            domain_regex.plusAssign(it.substring(7).lowercase())
+        } else if (lower.startsWith("keyword:")) {
+            domain_keyword.plusAssign(it.substring(8).lowercase())
+        } else {
+            domain_suffix.plusAssign(it.lowercase())
+        }
+    }
+    rule_set?.removeIf { it.isNullOrBlank() }
+    domain?.removeIf { it.isNullOrBlank() }
+    domain_suffix?.removeIf { it.isNullOrBlank() }
+    domain_regex?.removeIf { it.isNullOrBlank() }
+    domain_keyword?.removeIf { it.isNullOrBlank() }
+    if (rule_set?.isEmpty() == true) rule_set = null
+    if (domain?.isEmpty() == true) domain = null
+    if (domain_suffix?.isEmpty() == true) domain_suffix = null
+    if (domain_regex?.isEmpty() == true) domain_regex = null
+    if (domain_keyword?.isEmpty() == true) domain_keyword = null
+}
+
+fun SingBoxOptions.DNSRule_DefaultOptions.checkEmpty(): Boolean {
+    if (rule_set?.isNotEmpty() == true) return false
+    if (domain?.isNotEmpty() == true) return false
+    if (domain_suffix?.isNotEmpty() == true) return false
+    if (domain_regex?.isNotEmpty() == true) return false
+    if (domain_keyword?.isNotEmpty() == true) return false
+    if (user_id?.isNotEmpty() == true) return false
+    return true
+}
+
+fun generateRuleSet(ruleSetString: List<String>, ruleSet: MutableList<RuleSet>) {
+    val expanded = mutableListOf<String>()
+    ruleSetString.forEach { raw ->
+        val it = raw.trim()
+        val lower = it.lowercase()
+        when (lower) {
+            "geosite:ru" -> {
+                expanded.add("geosite:category-ru")
+                expanded.add("geosite:tld-ru")
+            }
+            "geosite:ir" -> {
+                expanded.add("geosite:category-ir")
+            }
+            else -> expanded.add(it)
+        }
+    }
+    expanded.forEach {
+        when {
+            it.startsWith("geoip:") -> {
+                ruleSet.add(RuleSet().apply {
+                    type = "local"
+                    tag = it
+                    format = "binary"
+                    path = it
+                })
+            }
+
+            it.startsWith("geosite:") -> {
+                ruleSet.add(RuleSet().apply {
+                    type = "local"
+                    tag = it
+                    format = "binary"
+                    path = it
+                })
+            }
+        }
+    }
+}
+
+fun SingBoxOptions.Rule_DefaultOptions.makeSingBoxRule(list: List<String>, isIP: Boolean) {
+    if (isIP) {
+        if (ip_cidr == null) ip_cidr = mutableListOf<String>()
+        if (rule_set == null) rule_set = mutableListOf<String>()
+    } else {
+        if (rule_set == null) rule_set = mutableListOf<String>()
+        if (domain == null) domain = mutableListOf<String>()
+        if (domain_suffix == null) domain_suffix = mutableListOf<String>()
+        if (domain_regex == null) domain_regex = mutableListOf<String>()
+        if (domain_keyword == null) domain_keyword = mutableListOf<String>()
+    }
+    list.forEach { raw ->
+        val it = raw.trim()
+        val lower = it.lowercase()
+        if (isIP) {
+            if (lower.startsWith("geoip:")) {
+                if (lower == "geoip:private") {
+                    ip_is_private = true
+                } else {
+                    rule_set.plusAssign(it)
+                }
+            } else {
+                ip_cidr.plusAssign(it)
+            }
+            return@forEach
+        }
+        if (lower == "geosite:ru") {
+            rule_set.plusAssign("geosite:category-ru")
+            rule_set.plusAssign("geosite:tld-ru")
+        } else if (lower == "geosite:ir") {
+            rule_set.plusAssign("geosite:category-ir")
+        } else if (lower.startsWith("geosite:")) {
+            rule_set.plusAssign(it)
+        } else if (lower.startsWith("full:")) {
+            domain.plusAssign(it.substring(5).lowercase())
+        } else if (lower.startsWith("domain:")) {
+            domain_suffix.plusAssign(it.substring(7).lowercase())
+        } else if (lower.startsWith("regexp:")) {
+            domain_regex.plusAssign(it.substring(7).lowercase())
+        } else if (lower.startsWith("keyword:")) {
+            domain_keyword.plusAssign(it.substring(8).lowercase())
+        } else {
+            domain_suffix.plusAssign(it.lowercase())
+        }
+    }
+    ip_cidr?.removeIf { it.isNullOrBlank() }
+    rule_set?.removeIf { it.isNullOrBlank() }
+    domain?.removeIf { it.isNullOrBlank() }
+    domain_suffix?.removeIf { it.isNullOrBlank() }
+    domain_regex?.removeIf { it.isNullOrBlank() }
+    domain_keyword?.removeIf { it.isNullOrBlank() }
+    if (ip_cidr?.isEmpty() == true) ip_cidr = null
+    if (rule_set?.isEmpty() == true) rule_set = null
+    if (domain?.isEmpty() == true) domain = null
+    if (domain_suffix?.isEmpty() == true) domain_suffix = null
+    if (domain_regex?.isEmpty() == true) domain_regex = null
+    if (domain_keyword?.isEmpty() == true) domain_keyword = null
+}
+
+fun SingBoxOptions.Rule_DefaultOptions.checkEmpty(): Boolean {
+    if (ip_cidr?.isNotEmpty() == true) return false
+    if (domain?.isNotEmpty() == true) return false
+    if (rule_set?.isNotEmpty() == true) return false
+    if (domain_suffix?.isNotEmpty() == true) return false
+    if (domain_regex?.isNotEmpty() == true) return false
+    if (domain_keyword?.isNotEmpty() == true) return false
+    if (user_id?.isNotEmpty() == true) return false
+    //
+    if (port?.isNotEmpty() == true) return false
+    if (port_range?.isNotEmpty() == true) return false
+    if (source_ip_cidr?.isNotEmpty() == true) return false
+    //
+    if (!_hack_custom_config.isNullOrBlank()) return false
+    return true
+}

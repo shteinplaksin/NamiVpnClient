@@ -1,0 +1,39 @@
+*.iml
+.gradle
+.idea
+.vscode
+.DS_Store
+build/
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/libs/
+/app/src/main/assets/sing-box
+/service_account_credentials.json
+jniLibs/
+/library/libcore_build/
+.idea/deploymentTargetDropDown.xml
+/nkmr
+
+# submodules
+/external
+
+# local tooling
+.kotlin/
+.opencode/
+.codex-remote-attachments/
+*.hprof
+cleanup_build.*
+run_gradle.*
+build_core.*
+
+
+# signing material is local-only; passwords live in ignored local.properties
+# or GitHub Actions secrets and must never be committed.
+*.jks
+*.keystore
+
+# Local contributor notes are maintained outside the Git repository.
+/AGENTS.md
+/REWRITE_LOG.md

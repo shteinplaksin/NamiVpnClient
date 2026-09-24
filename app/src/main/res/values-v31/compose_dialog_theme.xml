@@ -1,0 +1,10 @@
+<resources>
+    <!-- Compose DialogWindowTheme is an overlay on the Activity theme. Make
+         API 31+ Compose dialogs eligible for native background blur without
+         changing the Activity theme or pre-Android-12 dialog windows. -->
+    <style name="DialogWindowTheme">
+        <item name="android:windowClipToOutline">false</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+    </style>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="logcat">Foutopsporing Informatie exporteren</string>
+    <string name="version_x">Versie (%s)</string>
+    <string name="app_version">Versie</string>
+    <string name="oss_licenses">Open source-licenties</string>
+    <string name="telegram">Telegram-update kanaal</string>
+    <string name="github">Broncode</string>
+    <string name="project">Project</string>
+    <string name="app_desc">De universele proxy-toolchain voor Android, geschreven in Kotlin.</string>
+    <string name="lan_permission_required_summary">Android vereist toestemming voor toegang tot het lokale netwerk voordat deze proxy LAN-verbindingen kan accepteren. Totdat de toestemming is verleend, blijft de proxy beschikbaar op dit apparaat.</string>
+    <string name="lan_permission_grant">Toestemming voor toegang tot het lokale netwerk verlenen</string>
+    <string name="lan_permission_denied_title">Toestemming voor lokaal netwerk geweigerd</string>
+    <string name="lan_permission_denied_message">LAN-toegang blijft uitgeschakeld. Sta toegang tot het lokale netwerk toe in de Android-toestemmingsmelding om verbindingen van andere apparaten te accepteren.</string>
+    <string name="lan_permission_open_settings">App-instellingen</string>
+</resources>
