@@ -306,7 +306,6 @@ fun NamiTheme(content: @Composable () -> Unit) {
         rendererCapabilities,
         DataStore.themeMode,
         DataStore.interfaceStyle,
-        DataStore.liquidGlassQuality,
         DataStore.nightTheme,
         DataStore.amoledDark,
     ) {
@@ -359,8 +358,11 @@ fun NamiTheme(content: @Composable () -> Unit) {
             }
         }
         else -> {
-            // THEME_MODE_GREEN (Default green seed #006C4C)
-            if (amoled) AmoledDarkGreenColors else if (dark) DarkGreenColors else LightGreenColors
+            ClassicThemes.buildClassicColorScheme(
+                themeId = DataStore.appTheme,
+                isDark = dark,
+                isAmoled = amoled,
+            )
         }
     }
 

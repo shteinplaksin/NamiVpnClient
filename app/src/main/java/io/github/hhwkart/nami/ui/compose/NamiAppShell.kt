@@ -1,10 +1,21 @@
 package io.github.hhwkart.nami.ui.compose
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -30,6 +41,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -39,7 +52,6 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +63,8 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,10 +75,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -81,8 +106,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlin.math.cos
+import kotlin.math.PI
+import com.kyant.backdrop.backdrops.layerBackdrop
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.DefaultNavTransitions
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -121,6 +152,7 @@ import io.github.hhwkart.nami.ui.compose.startup.OnboardingScreen
 import io.github.hhwkart.nami.ui.compose.startup.QuickSetupScreen
 import io.github.hhwkart.nami.ui.compose.startup.QuickSetupBus
 import io.github.hhwkart.nami.ui.compose.startup.QuickSetupResult
+import io.github.hhwkart.nami.ui.compose.startup.QuickSetupReturnTarget
 import io.github.hhwkart.nami.ui.compose.startup.QuickSetupSource
 import io.github.hhwkart.nami.ui.compose.startup.WhatsNewScreen
 import io.github.hhwkart.nami.ui.compose.tools.AssetsScreen
@@ -130,7 +162,6 @@ import io.github.hhwkart.nami.ui.compose.utility.DashboardScreen
 import io.github.hhwkart.nami.ui.compose.utility.LogScreen
 import io.github.hhwkart.nami.ui.compose.utility.ToolsScreen
 import kotlinx.coroutines.flow.collect
-import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -151,8 +182,16 @@ private val mainDestinations = listOf(
     MainDestination(Destination.Routing, Icons.Filled.Public, R.string.menu_routing),
     MainDestination(Destination.Settings, Icons.Filled.Settings, R.string.menu_settings),
 )
+private val mainDestinationRoutes = mainDestinations.map { it.route::class.qualifiedName }
 
 private val floatingTabBarShape = RoundedCornerShape(percent = 50)
+private val liquidTabBarPalette = listOf(
+    Color.hsv(42f, saturation = 0.72f, value = 1f),
+    Color.hsv(25f, saturation = 0.68f, value = 1f),
+    Color.hsv(326f, saturation = 0.48f, value = 1f),
+    Color.hsv(278f, saturation = 0.58f, value = 1f),
+    Color.hsv(42f, saturation = 0.72f, value = 1f),
+)
 
 private object FloatingTabBarMetrics {
     // Keep the floating control compact on phones and wide windows alike. The
@@ -171,6 +210,181 @@ private object FloatingTabBarMetrics {
     val maxWidth = 280.dp
 }
 
+@Composable
+private fun rememberLiquidTabBarEdgePhase(enabled: Boolean, reduceMotion: Boolean): State<Float>? {
+    if (!enabled || reduceMotion) return null
+
+    val transition = rememberInfiniteTransition(label = "liquidTabBarEdgeGlow")
+    return transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 14_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "liquidTabBarEdgeGlowPhase",
+    )
+}
+
+@Composable
+private fun LiquidTabBarEdgeGlow(
+    modifier: Modifier,
+    colorStops: State<Array<Pair<Float, Color>>>,
+    blurSupported: Boolean,
+) {
+    val bloomModifier = if (blurSupported) modifier.blur(12.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded) else modifier
+    Canvas(bloomModifier) {
+        val left = FloatingTabBarMetrics.outerHorizontalPadding.toPx()
+        val top = FloatingTabBarMetrics.outerVerticalPadding.toPx()
+        val width = (size.width - left * 2f).coerceAtLeast(0f)
+        val height = FloatingTabBarMetrics.surfaceHeight.toPx()
+        val center = Offset(left + width / 2f, top + height / 2f)
+        val edgeBrush = Brush.sweepGradient(colorStops = colorStops.value, center = center)
+        drawRoundRect(
+            brush = edgeBrush,
+            topLeft = Offset(left, top),
+            size = Size(width, height),
+            cornerRadius = CornerRadius(height / 2f),
+            style = Stroke(width = if (blurSupported) 6.dp.toPx() else 2.dp.toPx()),
+            blendMode = BlendMode.Screen,
+        )
+    }
+}
+
+private fun Modifier.liquidTabBarEdgeRim(
+    colorStops: State<Array<Pair<Float, Color>>>,
+): Modifier = drawWithContent {
+    drawContent()
+    val edgeBrush = Brush.sweepGradient(
+        colorStops = colorStops.value,
+        center = Offset(size.width / 2f, size.height / 2f),
+    )
+    drawRoundRect(
+        brush = edgeBrush,
+        topLeft = Offset.Zero,
+        size = Size(size.width, size.height),
+        cornerRadius = CornerRadius(size.height / 2f),
+        style = Stroke(width = 1.25.dp.toPx()),
+        blendMode = BlendMode.Screen,
+    )
+}
+
+private fun liquidTabBarEdgeColorStops(
+    phase: Float,
+    darkSurface: Boolean,
+): Array<Pair<Float, Color>> {
+    val baseAlpha = if (darkSurface) 0.12f else 0.08f
+    val glowAlpha = if (darkSurface) 0.34f else 0.24f
+
+    return Array(49) { index ->
+        val position = index / 48f
+        val shiftedPosition = (position + phase) % 1f
+        val palettePosition = shiftedPosition * (liquidTabBarPalette.lastIndex)
+        val paletteIndex = palettePosition.toInt().coerceAtMost(liquidTabBarPalette.lastIndex - 1)
+        val fraction = palettePosition - paletteIndex
+        val start = liquidTabBarPalette[paletteIndex]
+        val end = liquidTabBarPalette[paletteIndex + 1]
+        val hueColor = Color(
+            red = start.red + (end.red - start.red) * fraction,
+            green = start.green + (end.green - start.green) * fraction,
+            blue = start.blue + (end.blue - start.blue) * fraction,
+        )
+        val pulse = ((cos(2f * PI.toFloat() * (position * 2f - phase)) + 1f) / 2f)
+        val alpha = baseAlpha + pulse * glowAlpha
+        position to hueColor.copy(alpha = alpha)
+    }
+}
+
+private fun liquidDropletShape(stretch: Float, movingRight: Boolean): Shape = GenericShape { size, _ ->
+    val height = size.height
+    val width = size.width
+    val middle = height * 0.5f
+    val endRadius = minOf(height * 0.5f, width * 0.5f)
+    val tailLength = width * 0.18f * stretch.coerceIn(0f, 1f)
+    this.apply {
+        if (movingRight) {
+            moveTo(tailLength + endRadius, 0f)
+            lineTo(width - endRadius, 0f)
+            cubicTo(width - endRadius * 0.55f, 0f, width, endRadius * 0.55f, width, middle)
+            cubicTo(width, height - endRadius * 0.55f, width - endRadius * 0.55f, height, width - endRadius, height)
+            lineTo(tailLength + endRadius, height)
+            cubicTo(
+                tailLength + endRadius * 0.55f,
+                height,
+                tailLength,
+                height * 0.77f,
+                0f,
+                middle,
+            )
+            cubicTo(
+                tailLength,
+                height * 0.23f,
+                tailLength + endRadius * 0.55f,
+                0f,
+                tailLength + endRadius,
+                0f,
+            )
+        } else {
+            moveTo(width - tailLength - endRadius, 0f)
+            lineTo(endRadius, 0f)
+            cubicTo(endRadius * 0.55f, 0f, 0f, endRadius * 0.55f, 0f, middle)
+            cubicTo(0f, height - endRadius * 0.55f, endRadius * 0.55f, height, endRadius, height)
+            lineTo(width - tailLength - endRadius, height)
+            cubicTo(
+                width - tailLength - endRadius * 0.55f,
+                height,
+                width - tailLength,
+                height * 0.77f,
+                width,
+                middle,
+            )
+            cubicTo(
+                width - tailLength,
+                height * 0.23f,
+                width - tailLength - endRadius * 0.55f,
+                0f,
+                width - tailLength - endRadius,
+                0f,
+            )
+        }
+        close()
+    }
+}
+
+internal data class LiquidTabIndicatorMotion(
+    val position: Float,
+    val stretch: Float,
+    val impact: Float,
+    val movingRight: Boolean,
+    val impactSide: Float,
+)
+
+internal fun liquidTabIndicatorMotion(
+    rawPosition: Float,
+    velocity: Float,
+    lastIndex: Int,
+    isLtr: Boolean,
+    reduceMotion: Boolean,
+): LiquidTabIndicatorMotion {
+    val position = rawPosition.coerceIn(0f, lastIndex.toFloat())
+    val overshoot = rawPosition - position
+    val impact = if (reduceMotion) 0f else (kotlin.math.abs(overshoot) * 3.5f).coerceIn(0f, 1f)
+    val stretch = if (reduceMotion) 0f else
+        (kotlin.math.abs(velocity) / 12f).coerceIn(0f, 1f) * (1f - impact * 0.75f)
+    val physicalDirection = velocity * if (isLtr) 1f else -1f
+    val impactSide = when {
+        overshoot > 0f -> if (isLtr) 1f else -1f
+        overshoot < 0f -> if (isLtr) -1f else 1f
+        else -> 0f
+    }
+    return LiquidTabIndicatorMotion(
+        position = position,
+        stretch = stretch,
+        impact = impact,
+        movingRight = physicalDirection >= 0f,
+        impactSide = impactSide,
+    )
+}
 enum class ConfirmationDialog {
     RELOAD_SERVICE,
     FORCE_CONFIG_RELOAD_SERVICE,
@@ -228,26 +442,57 @@ fun NamiAppShell(
         }
     }
 
-    fun navigateAfterQuickSetup(destination: Destination) {
-        // Quick Setup is a transient flow. Returning to Home must not restore
-        // Onboarding/QuickSetup state; returning to Profiles may restore the
-        // user's saved Profiles list state.
-        val preserveTargetState = destination != Destination.Home
-        navController.navigate(destination) {
-            popUpTo(navController.graph.findStartDestination().id) {
-                saveState = preserveTargetState
+    fun navigateAfterQuickSetup(target: QuickSetupReturnTarget) {
+        when (target) {
+            is QuickSetupReturnTarget.PopScreens -> {
+                repeat(target.count) {
+                    if (!navController.popBackStack()) return
+                }
+                return
             }
-            launchSingleTop = true
-            restoreState = preserveTargetState
+            is QuickSetupReturnTarget.ToDestination -> {
+                val destination = target.destination
+                if ((destination == Destination.Settings || destination == Destination.About) &&
+                    navController.popBackStack(destination::class.qualifiedName!!, inclusive = false)
+                ) {
+                    return
+                }
+                // Quick Setup is a transient flow. Returning to Home must not
+                // restore onboarding state; Profiles may keep its saved list.
+                val preserveTargetState = destination != Destination.Home
+                navController.navigate(destination) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = preserveTargetState
+                    }
+                    launchSingleTop = true
+                    restoreState = preserveTargetState
+                }
+            }
         }
     }
 
     LaunchedEffect(Unit) {
-        NavigationBus.destination.collect { destination ->
-            if (mainDestinations.any { it.route == destination }) {
-                navigateTopLevel(destination)
-            } else {
-                navController.navigate(destination) { launchSingleTop = true }
+        NavigationBus.requests.collect { request ->
+            val destination = when (request) {
+                is NavigationRequest.Open -> request.destination
+                is NavigationRequest.ReturnTo -> request.destination
+                is NavigationRequest.ReturnToPrevious -> null
+            }
+            if (request is NavigationRequest.ReturnToPrevious) {
+                repeat(request.screenCount) {
+                    if (!navController.popBackStack()) return@collect
+                }
+            } else if (destination != null) {
+                val route = destination::class.qualifiedName
+                val returnedToExistingDestination = request is NavigationRequest.ReturnTo &&
+                    route != null && navController.popBackStack(route, inclusive = false)
+                if (!returnedToExistingDestination) {
+                    if (mainDestinations.any { it.route == destination }) {
+                        navigateTopLevel(destination)
+                    } else {
+                        navController.navigate(destination) { launchSingleTop = true }
+                    }
+                }
             }
         }
     }
@@ -275,6 +520,7 @@ fun NamiAppShell(
     // Keep the persisted opt-out behavior while using the floating surface on
     // every window size when it is enabled.
     val showFloatingTabBar = showBottomBar && currentDestination != null
+    val mainBottomPadding = if (showFloatingTabBar) FloatingTabBarMetrics.reservedHeight else 0.dp
     val effectiveLayoutType = when {
         !isTopLevel -> NavigationSuiteType.None
         showFloatingTabBar -> NavigationSuiteType.None
@@ -333,49 +579,46 @@ fun NamiAppShell(
     ) {
         NamiGlassBackdropHost(
             modifier = Modifier.fillMaxSize(),
-            backgroundModifier = if (showFloatingTabBar) {
-                Modifier
-                    .navigationBarsPadding()
-                    .padding(bottom = FloatingTabBarMetrics.reservedHeight)
-            } else {
-                Modifier
-            },
             enabled = LocalNamiVisualStyle.current.liquidEnabled,
             rendererTier = LocalNamiVisualStyle.current.effectiveTier,
         ) { backdrop ->
+            val isMainDestinationTransition: (String?, String?) -> Boolean = { from, to ->
+                from in mainDestinationRoutes && to in mainDestinationRoutes
+            }
+            val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+                if (isMainDestinationTransition(initialState.destination.route, targetState.destination.route)) {
+                    EnterTransition.None
+                } else {
+                    DefaultNavTransitions.enterTransition(this)
+                }
+            }
+            val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+                if (isMainDestinationTransition(initialState.destination.route, targetState.destination.route)) {
+                    ExitTransition.None
+                } else {
+                    DefaultNavTransitions.exitTransition(this)
+                }
+            }
             Box(modifier = Modifier.fillMaxSize()) {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    containerColor = Color.Transparent,
-                    contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
-                    bottomBar = {
-                        if (showFloatingTabBar) {
-                            // Keep Scaffold's measured content inset while the visible bar is
-                            // anchored to the shell root below. This avoids parent navigation
-                            // layouts positioning the floating surface at the top of the content.
-                            Spacer(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .navigationBarsPadding()
-                                    .height(FloatingTabBarMetrics.reservedHeight),
-                            )
-                        }
-                    },
-                ) { _ ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .namiBackdropSource(backdrop),
-                    ) {
-                NavHost(
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .namiBackdropSource(backdrop),
+                ) {
+                                NavHost(
                     navController = navController,
                     startDestination = Destination.Home,
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = DefaultNavTransitions.popEnterTransition(enterTransition),
+                    popExitTransition = DefaultNavTransitions.popExitTransition(exitTransition),
                 ) {
                 composable<Destination.Home> {
-                    HomeScreen()
+                    HomeScreen(bottomBarPadding = mainBottomPadding)
                 }
                 composable<Destination.Profiles> {
                     ProfilesScreen(
+                        bottomBarPadding = mainBottomPadding,
                         onEditProfile = { profile ->
                             navController.navigate(
                                 Destination.ProtocolEditor(
@@ -390,6 +633,7 @@ fun NamiAppShell(
                 }
                 composable<Destination.Groups> {
                     GroupsScreen(
+                        bottomBarPadding = mainBottomPadding,
                         onEditGroup = { group ->
                             navController.navigate(Destination.GroupEditor(group.id))
                         },
@@ -397,14 +641,17 @@ fun NamiAppShell(
                 }
                 composable<Destination.Routing> {
                     RoutingScreen(
+                        bottomBarPadding = mainBottomPadding,
                         onAddRule = { navController.navigate(Destination.RouteEditor(0L)) },
                         onEditRule = { rule -> navController.navigate(Destination.RouteEditor(rule.id)) },
                         onAdvanced = { navController.navigate(Destination.RouteAssets) },
                         onReloadRequired = activity::confirmServiceReload,
+                        onForceConfigReloadRequired = activity::confirmForceConfigReload,
                     )
                 }
                 composable<Destination.Settings> {
                     SettingsScreen(
+                        bottomBarPadding = mainBottomPadding,
                         onOpenPerApp = { navController.navigate(Destination.PerAppProxy) },
                         onOpenAbout = { navController.navigate(Destination.About) },
                         onOpenOnboarding = activity::openOnboardingFromSettings,
@@ -458,8 +705,8 @@ fun NamiAppShell(
                 composable<Destination.About> {
                     AboutScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenOnboarding = activity::openOnboardingFromSettings,
-                        onOpenWhatsNew = activity::openWhatsNewFromSettings,
+                        onOpenOnboarding = activity::openOnboardingFromAbout,
+                        onOpenWhatsNew = activity::openWhatsNewFromAbout,
                     )
                 }
                 composable<Destination.Onboarding> {
@@ -554,7 +801,6 @@ fun NamiAppShell(
                 }
                     }
                 }
-            }
                 if (showFloatingTabBar) {
                     FloatingTabBar(
                         modifier = Modifier.align(Alignment.BottomCenter),
@@ -611,23 +857,56 @@ private fun FloatingTabBar(
     }.coerceAtLeast(0)
     val visualStyle = LocalNamiVisualStyle.current
     val rootRenderBackdrop = backdrop.renderBackdrop
-    val tabsBackdrop = if (rootRenderBackdrop != null && visualStyle.liquidEnabled) {
+    val edgeGlowPhase = rememberLiquidTabBarEdgePhase(
+        enabled = visualStyle.liquidEnabled,
+        reduceMotion = visualStyle.reduceMotion,
+    )
+    val darkSurface = androidx.compose.material3.MaterialTheme.colorScheme.surface.luminance() < 0.28f
+    val liquidEnabled = visualStyle.liquidEnabled
+    // Read the animated phase only from the draw lambdas below to avoid recomposing the tab bar every frame.
+    val edgeColorStops = remember(edgeGlowPhase, darkSurface, liquidEnabled) {
+        derivedStateOf {
+            if (liquidEnabled) {
+                liquidTabBarEdgeColorStops(edgeGlowPhase?.value ?: 0f, darkSurface)
+            } else {
+                emptyArray()
+            }
+        }
+    }
+    val edgeGlowBackdrop = if (rootRenderBackdrop != null && visualStyle.liquidEnabled) {
         rememberLayerBackdrop()
     } else {
         null
     }
-    val combinedTabBackdrop = if (rootRenderBackdrop != null && tabsBackdrop != null) {
-        rememberCombinedBackdrop(rootRenderBackdrop, tabsBackdrop)
+    val navigationRenderBackdrop = if (rootRenderBackdrop != null && edgeGlowBackdrop != null) {
+        rememberCombinedBackdrop(rootRenderBackdrop, edgeGlowBackdrop)
+    } else {
+        rootRenderBackdrop
+    }
+    val navigationBackdrop = navigationRenderBackdrop?.let(backdrop::withRenderBackdrop) ?: backdrop
+    val tabsBackdrop = if (navigationRenderBackdrop != null && visualStyle.liquidEnabled) {
+        rememberLayerBackdrop()
     } else {
         null
     }
-    val selectedTabBackdrop = combinedTabBackdrop?.let(backdrop::withRenderBackdrop)
+    val selectedTabRenderBackdrop = if (navigationRenderBackdrop != null && tabsBackdrop != null) {
+        rememberCombinedBackdrop(navigationRenderBackdrop, tabsBackdrop)
+    } else {
+        navigationRenderBackdrop
+    }
+    val selectedTabBackdrop = selectedTabRenderBackdrop?.let(backdrop::withRenderBackdrop)
     val latestSelectedIndex = rememberUpdatedState(selectedIndex)
     val latestOnDestinationSelected = rememberUpdatedState(onDestinationSelected)
     var isDragging by remember { mutableStateOf(false) }
     var dragPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
     var dragStartIndex by remember { mutableIntStateOf(selectedIndex) }
     var indicatorTargetIndex by remember { mutableIntStateOf(selectedIndex) }
+    var dragVelocity by remember { mutableFloatStateOf(0f) }
+    var dragMotionTick by remember { mutableIntStateOf(0) }
+    var releasePending by remember { mutableStateOf(false) }
+    var releasePosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
+    var releaseVelocity by remember { mutableFloatStateOf(0f) }
+    val indicatorMotion = remember { Animatable(selectedIndex.toFloat()) }
     var contentWidthPx by remember { mutableIntStateOf(0) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
@@ -638,21 +917,27 @@ private fun FloatingTabBar(
         0f
     }
     val slotStridePx = slotWidthPx + gapPx
-    val indicatorWidth = FloatingTabBarMetrics.indicatorDiameter
-    val indicatorWidthPx = with(density) { indicatorWidth.toPx() }
-    val indicatorHeight = FloatingTabBarMetrics.indicatorDiameter
-    val indicatorPosition by animateFloatAsState(
-        targetValue = if (isDragging) dragPosition else indicatorTargetIndex.toFloat(),
-        animationSpec = if (visualStyle.reduceMotion || isDragging) {
-            snap()
-        } else {
-            spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow,
-            )
-        },
-        label = "floatingTabIndicatorPosition",
+    val rawIndicatorPosition = if (isDragging || releasePending) dragPosition else indicatorMotion.value
+    val indicatorVelocity = when {
+        isDragging -> dragVelocity
+        releasePending -> releaseVelocity
+        else -> indicatorMotion.velocity
+    }
+    val indicatorMotionState = liquidTabIndicatorMotion(
+        rawPosition = rawIndicatorPosition,
+        velocity = if (visualStyle.liquidEnabled) indicatorVelocity else 0f,
+        lastIndex = destinations.lastIndex,
+        isLtr = isLtr,
+        reduceMotion = visualStyle.reduceMotion,
     )
+    val stretchAmount = indicatorMotionState.stretch
+    val impactAmount = indicatorMotionState.impact
+    val indicatorPosition = indicatorMotionState.position
+    val indicatorWidth = FloatingTabBarMetrics.indicatorDiameter *
+        (1f + stretchAmount * 0.28f - impactAmount * 0.14f)
+    val indicatorWidthPx = with(density) { indicatorWidth.toPx() }
+    val indicatorHeight = FloatingTabBarMetrics.indicatorDiameter *
+        (1f - stretchAmount * 0.04f + impactAmount * 0.18f)
     val indicatorScale by animateFloatAsState(
         targetValue = if (isDragging) 1.06f else 1f,
         animationSpec = if (visualStyle.reduceMotion) {
@@ -667,14 +952,40 @@ private fun FloatingTabBar(
     )
 
     LaunchedEffect(selectedIndex) {
-        if (!isDragging) {
-            indicatorTargetIndex = selectedIndex
-            dragPosition = selectedIndex.toFloat()
+        if (!isDragging) indicatorTargetIndex = selectedIndex
+    }
+
+    LaunchedEffect(dragMotionTick, isDragging) {
+        if (isDragging) {
+            delay(90)
+            dragVelocity = 0f
+        }
+    }
+
+    LaunchedEffect(indicatorTargetIndex, isDragging, visualStyle.reduceMotion) {
+        if (isDragging) {
+            indicatorMotion.stop()
+        } else {
+            val initialVelocity = if (releasePending) releaseVelocity else indicatorMotion.velocity
+            if (releasePending) {
+                indicatorMotion.snapTo(releasePosition)
+                releasePending = false
+            }
+            if (visualStyle.reduceMotion) {
+                indicatorMotion.snapTo(indicatorTargetIndex.toFloat())
+            } else {
+                indicatorMotion.animateTo(
+                    targetValue = indicatorTargetIndex.toFloat(),
+                    animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+                    initialVelocity = initialVelocity,
+                )
+            }
         }
     }
 
     fun selectDestination(index: Int) {
         val targetIndex = index.coerceIn(destinations.indices)
+        releasePending = false
         isDragging = false
         indicatorTargetIndex = targetIndex
         latestOnDestinationSelected.value(destinations[targetIndex].route)
@@ -702,18 +1013,41 @@ private fun FloatingTabBar(
             Box(
                 modifier = Modifier
                     .width(FloatingTabBarMetrics.maxWidth)
-                    .padding(
-                        horizontal = FloatingTabBarMetrics.outerHorizontalPadding,
-                        vertical = FloatingTabBarMetrics.outerVerticalPadding,
-                    ),
+                    .height(FloatingTabBarMetrics.reservedHeight),
                 contentAlignment = Alignment.Center,
-            ) {
+        ) {
+        if (visualStyle.liquidEnabled) {
+            LiquidTabBarEdgeGlow(
+                modifier = Modifier.matchParentSize().then(
+                    edgeGlowBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier,
+                ),
+                colorStops = edgeColorStops,
+                blurSupported = visualStyle.effectiveTier == LiquidGlassTier.BLUR ||
+                    visualStyle.effectiveTier == LiquidGlassTier.BLUR_AND_LENS,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = FloatingTabBarMetrics.outerHorizontalPadding,
+                    vertical = FloatingTabBarMetrics.outerVerticalPadding,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
         NamiNavigationSurface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(FloatingTabBarMetrics.surfaceHeight),
+                .height(FloatingTabBarMetrics.surfaceHeight)
+                .then(
+                    if (visualStyle.liquidEnabled) {
+                        Modifier.liquidTabBarEdgeRim(edgeColorStops)
+                    } else {
+                        Modifier
+                    },
+                ),
             shape = floatingTabBarShape,
-            backdrop = backdrop,
+            backdrop = navigationBackdrop,
         ) {
             Box(
                 modifier = Modifier
@@ -721,7 +1055,7 @@ private fun FloatingTabBar(
                     .fillMaxSize()
                     .onSizeChanged { contentWidthPx = it.width },
             ) {
-                if (rootRenderBackdrop != null && tabsBackdrop != null) {
+                if (navigationRenderBackdrop != null && tabsBackdrop != null) {
                     // The upstream catalog uses a separate exported layer for
                     // the tab contents. The selected lens then combines the
                     // page backdrop with this local tab layer, so the active
@@ -732,7 +1066,7 @@ private fun FloatingTabBar(
                             .layerBackdrop(tabsBackdrop)
                             .fillMaxSize()
                             .drawBackdrop(
-                                backdrop = rootRenderBackdrop,
+                                backdrop = navigationRenderBackdrop,
                                 shape = { floatingTabBarShape },
                                 effects = {
                                     vibrancy()
@@ -762,13 +1096,18 @@ private fun FloatingTabBar(
                             }
                             if (index < destinations.lastIndex) {
                                 Spacer(Modifier.width(FloatingTabBarMetrics.itemSpacing))
-                            }
-                        }
-                    }
-                }
+            }
+        }
+    }
+}
 
                 if (slotWidthPx > 0f) {
                     val indicatorHeightPx = with(density) { indicatorHeight.toPx() }
+                    val indicatorShape = if (!visualStyle.liquidEnabled || stretchAmount < 0.02f) {
+                        CircleShape
+                    } else {
+                        liquidDropletShape(stretchAmount, movingRight = indicatorMotionState.movingRight)
+                    }
                     // The row is centered inside the full 64dp surface. Center the
                     // indicator against that same surface, not against the row's
                     // 48dp hit target; using 48dp puts the blue indicator 8dp too high.
@@ -782,7 +1121,9 @@ private fun FloatingTabBar(
                                     x = (
                                         (if (isLtr) indicatorPosition else destinations.lastIndex - indicatorPosition) *
                                             slotStridePx +
-                                            (slotWidthPx - indicatorWidthPx) / 2f
+                                            (slotWidthPx - indicatorWidthPx) / 2f +
+                                             with(density) { (4.dp * impactAmount).toPx() } *
+                                             indicatorMotionState.impactSide
                                         ).roundToInt(),
                                     y = indicatorVerticalOffsetPx.roundToInt(),
                                 )
@@ -792,26 +1133,30 @@ private fun FloatingTabBar(
                             .graphicsLayer {
                                 scaleX = indicatorScale
                                 scaleY = indicatorScale
+                                rotationZ = (if (indicatorMotionState.movingRight) 1f else -1f) *
+                                    4.5f * stretchAmount
                             }
                     if (visualStyle.liquidEnabled) {
                         NamiGlassOverlay(
                             backdrop = selectedTabBackdrop ?: backdrop,
-                            modifier = indicatorModifier,
-                            shape = androidx.compose.foundation.shape.CircleShape,
+                            // The outer clip preserves the droplet silhouette. The
+                            // lens itself needs a CornerBasedShape to avoid a crash.
+                            modifier = indicatorModifier.clip(indicatorShape),
+                            shape = CircleShape,
                             // The selected item is a neutral piece of glass.
                             // Accent blue belongs to actions, not to the lens
                             // itself; a colored fill hides the refraction that
                             // should be visible at its edge.
                             tint = androidx.compose.material3.MaterialTheme.colorScheme
                                 .surfaceBright.copy(
-                                    alpha = if (visualStyle.isClearGlass) 0.16f else 0.22f,
+                                    alpha = if (visualStyle.isClearGlass) 0.48f else 0.56f,
                                 ),
                             surfaceRole = GlassSurfaceRole.SELECTED_INDICATOR,
                         ) {}
                     } else {
                         Box(
                             modifier = indicatorModifier
-                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .clip(indicatorShape)
                                 .background(
                                     androidx.compose.material3.MaterialTheme.colorScheme
                                         .primaryContainer,
@@ -827,45 +1172,51 @@ private fun FloatingTabBar(
                         .then(if (viewportNeedsScroll) Modifier else Modifier.pointerInput(destinations.size, slotStridePx, isLtr) {
                             detectDragGestures(
                                 onDragStart = {
+                                    releasePending = false
+                                    dragStartIndex = latestSelectedIndex.value.coerceIn(destinations.indices)
+                                    dragPosition = indicatorMotion.value.coerceIn(0f, destinations.lastIndex.toFloat())
+                                    dragVelocity = 0f
+                                    dragMotionTick++
                                     isDragging = true
-                                    dragStartIndex = latestSelectedIndex.value
-                                        .coerceIn(destinations.indices)
-                                    // Continue from the selected tab. Using
-                                    // the raw pointer coordinate here makes a
-                                    // drag jump to the finger and feels broken
-                                    // when it starts on an icon.
-                                    dragPosition = dragStartIndex.toFloat()
                                 },
                                 onDragCancel = {
+                                    releasePosition = dragPosition
+                                    releaseVelocity = 0f
+                                    releasePending = true
+                                    indicatorTargetIndex = latestSelectedIndex.value.coerceIn(destinations.indices)
                                     isDragging = false
-                                    indicatorTargetIndex = latestSelectedIndex.value
-                                        .coerceIn(destinations.indices)
                                 },
                                 onDragEnd = {
-                                    val currentIndex = latestSelectedIndex.value
-                                        .coerceIn(destinations.indices)
-                                    isDragging = false
+                                    val currentIndex = latestSelectedIndex.value.coerceIn(destinations.indices)
+                                    releasePosition = dragPosition
+                                    releaseVelocity = dragVelocity.coerceIn(-24f, 24f)
+                                    releasePending = true
                                     if (currentIndex != dragStartIndex) {
-                                        // A different navigation event won while the finger was down.
-                                        // Keep that committed destination instead of replaying stale drag state.
+                                        releaseVelocity = 0f
                                         indicatorTargetIndex = currentIndex
-                                        dragPosition = currentIndex.toFloat()
                                     } else {
-                                        val targetIndex = dragPosition
+                                        val targetIndex = (dragPosition + releaseVelocity * 0.10f)
                                             .roundToInt()
                                             .coerceIn(destinations.indices)
                                         indicatorTargetIndex = targetIndex
                                         latestOnDestinationSelected.value(destinations[targetIndex].route)
                                     }
+                                    isDragging = false
                                 },
                                 onDrag = { change, dragAmount ->
-                                    change.consume()
                                     if (slotStridePx > 0f) {
                                         val direction = if (isLtr) 1f else -1f
-                                        dragPosition = (
-                                            dragPosition + dragAmount.x / slotStridePx * direction
-                                        ).coerceIn(0f, destinations.lastIndex.toFloat())
+                                        val indexDelta = dragAmount.x / slotStridePx * direction
+                                        val elapsedMs = (change.uptimeMillis - change.previousUptimeMillis)
+                                            .coerceAtLeast(1L)
+                                        val instantVelocity = indexDelta * 1000f / elapsedMs
+                                        dragVelocity = (dragVelocity * 0.3f + instantVelocity * 0.7f)
+                                            .coerceIn(-24f, 24f)
+                                        dragMotionTick++
+                                        dragPosition = (dragPosition + indexDelta)
+                                            .coerceIn(0f, destinations.lastIndex.toFloat())
                                     }
+                                    change.consume()
                                 },
                             )
                         }),
@@ -952,6 +1303,7 @@ private fun FloatingTabBar(
                     }
                 }
             }
+        }
         }
     }
 }

@@ -67,6 +67,7 @@ import io.github.hhwkart.nami.plugin.PluginManager.loadString
 import io.github.hhwkart.nami.utils.PackageCache
 import io.github.hhwkart.nami.ui.compose.common.NamiAutoFocusTextField
 import io.github.hhwkart.nami.ui.compose.common.NamiAlertDialog
+import io.github.hhwkart.nami.ui.ProjectLinks
 import io.github.hhwkart.nami.ui.compose.style.NamiCard
 import libcore.Libcore
 import kotlinx.coroutines.Dispatchers
@@ -262,11 +263,11 @@ fun AboutScreen(
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { openUrl("https://github.com/hhwkart/NamiForAndroid") }) {
+                    OutlinedButton(onClick = { openUrl(ProjectLinks.REPOSITORY) }) {
                         Text("Project")
                     }
-                    OutlinedButton(onClick = { openUrl("https://matsuridayo.github.io/") }) {
-                        Text("FAQ")
+                    OutlinedButton(onClick = { openUrl(ProjectLinks.README) }) {
+                        Text("README")
                     }
                 }
             }

@@ -10,9 +10,29 @@ class NavigationBusTest {
     @Test
     fun repeatedHomeRequestsRemainIndependentEvents() = runTest {
         NavigationBus.open(Destination.Home)
-        assertEquals(Destination.Home, NavigationBus.destination.first())
+        assertEquals(NavigationRequest.Open(Destination.Home), NavigationBus.requests.first())
 
         NavigationBus.open(Destination.Home)
-        assertEquals(Destination.Home, NavigationBus.destination.first())
+        assertEquals(NavigationRequest.Open(Destination.Home), NavigationBus.requests.first())
+    }
+
+    @Test
+    fun returnRequestIsDistinctFromOpeningADestination() = runTest {
+        NavigationBus.returnTo(Destination.Settings)
+
+        assertEquals(
+            NavigationRequest.ReturnTo(Destination.Settings),
+            NavigationBus.requests.first(),
+        )
+    }
+
+    @Test
+    fun restoredLegacyFlowCanReturnByPoppingItsTransientScreens() = runTest {
+        NavigationBus.returnToPrevious(screenCount = 2)
+
+        assertEquals(
+            NavigationRequest.ReturnToPrevious(screenCount = 2),
+            NavigationBus.requests.first(),
+        )
     }
 }

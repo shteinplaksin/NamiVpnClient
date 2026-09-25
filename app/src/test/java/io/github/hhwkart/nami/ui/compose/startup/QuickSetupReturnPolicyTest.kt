@@ -9,24 +9,44 @@ class QuickSetupReturnPolicyTest {
     @Test
     fun initialOnboardingReturnsHomeAfterCompletionOrCancel() {
         assertEquals(
-            Destination.Home,
-            QuickSetupReturnPolicy.destination(QuickSetupEntryPoint.INITIAL_ONBOARDING),
+            QuickSetupReturnTarget.ToDestination(Destination.Home),
+            QuickSetupReturnPolicy.target(QuickSetupEntryPoint.INITIAL_ONBOARDING, 1),
         )
     }
 
     @Test
     fun profilesEntryReturnsProfilesAfterCompletionOrCancel() {
         assertEquals(
-            Destination.Profiles,
-            QuickSetupReturnPolicy.destination(QuickSetupEntryPoint.PROFILES),
+            QuickSetupReturnTarget.ToDestination(Destination.Profiles),
+            QuickSetupReturnPolicy.target(QuickSetupEntryPoint.PROFILES, 1),
         )
     }
 
     @Test
-    fun settingsOrAboutEntryReturnsHomeAfterCompletionOrCancel() {
+    fun settingsEntryReturnsToSettingsAfterCompletionOrCancel() {
         assertEquals(
-            Destination.Home,
-            QuickSetupReturnPolicy.destination(QuickSetupEntryPoint.SETTINGS_OR_ABOUT),
+            QuickSetupReturnTarget.ToDestination(Destination.Settings),
+            QuickSetupReturnPolicy.target(QuickSetupEntryPoint.SETTINGS, 1),
+        )
+    }
+
+    @Test
+    fun aboutEntryReturnsToAboutAfterCompletionOrCancel() {
+        assertEquals(
+            QuickSetupReturnTarget.ToDestination(Destination.About),
+            QuickSetupReturnPolicy.target(QuickSetupEntryPoint.ABOUT, 1),
+        )
+    }
+
+    @Test
+    fun legacyCombinedEntryPopsBackToTheRestoredOrigin() {
+        assertEquals(
+            QuickSetupReturnTarget.PopScreens(1),
+            QuickSetupReturnPolicy.target(QuickSetupEntryPoint.SETTINGS_OR_ABOUT, 1),
+        )
+        assertEquals(
+            QuickSetupReturnTarget.PopScreens(2),
+            QuickSetupReturnPolicy.target(QuickSetupEntryPoint.SETTINGS_OR_ABOUT, 2),
         )
     }
 }

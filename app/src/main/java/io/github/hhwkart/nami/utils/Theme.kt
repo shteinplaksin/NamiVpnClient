@@ -35,7 +35,23 @@ object Theme {
     private fun defaultTheme() = PINK_SSR
 
     fun apply(context: Context) {
+        migrateAppearancePreferences()
         context.setTheme(getTheme())
+    }
+
+    private fun migrateAppearancePreferences() {
+        val themeMode = DataStore.themeMode
+        val migratedThemeMode = ThemePreferencePolicy.migrateThemeMode(
+            themeMode,
+            android.os.Build.VERSION.SDK_INT,
+        )
+        if (migratedThemeMode != themeMode) {
+            DataStore.themeMode = migratedThemeMode
+            DataStore.composeDynamicColors = migratedThemeMode == Key.THEME_MODE_DYNAMIC
+        }
+        val nightTheme = DataStore.nightTheme
+        val migratedNightTheme = ThemePreferencePolicy.migrateNightTheme(nightTheme)
+        if (migratedNightTheme != nightTheme) DataStore.nightTheme = migratedNightTheme
     }
 
     fun applyDialog(context: Context) {
@@ -56,7 +72,7 @@ object Theme {
     ) {
         DataStore.appTheme
     } else {
-        GREEN
+        defaultTheme()
     }
 
     fun getTheme(theme: Int): Int {
@@ -120,7 +136,7 @@ object Theme {
             0 -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
             1 -> AppCompatDelegate.MODE_NIGHT_YES
             2 -> AppCompatDelegate.MODE_NIGHT_NO
-            else -> AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY
+            else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
         }
     }
 

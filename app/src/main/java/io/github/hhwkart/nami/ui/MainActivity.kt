@@ -63,9 +63,12 @@ import io.github.hhwkart.nami.ui.compose.startup.InstallStateDetector
 import io.github.hhwkart.nami.ui.compose.startup.QuickSetupResult
 import io.github.hhwkart.nami.ui.compose.startup.QuickSetupEntryPoint
 import io.github.hhwkart.nami.ui.compose.startup.QuickSetupReturnPolicy
+import io.github.hhwkart.nami.ui.compose.startup.QuickSetupReturnTarget
 import io.github.hhwkart.nami.ui.compose.startup.QuickSetupSource
 import io.github.hhwkart.nami.ui.compose.startup.WHATS_NEW_CONTENT_VERSION
 import io.github.hhwkart.nami.ui.compose.startup.WhatsNewPolicy
+import io.github.hhwkart.nami.ui.compose.startup.WhatsNewEntryPoint
+import io.github.hhwkart.nami.ui.compose.startup.WhatsNewReturnPolicy
 import io.github.hhwkart.nami.ui.compose.theme.NamiTheme
 import io.github.hhwkart.nami.core.utils.Util
 
@@ -89,6 +92,7 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
     private var startupDialogsRequested = false
     private var showWhatsNewAfterExternalAction = false
     private var quickSetupEntryPoint = QuickSetupEntryPoint.INITIAL_ONBOARDING
+    private var whatsNewEntryPoint = WhatsNewEntryPoint.AUTOMATIC
     private var confirmationDialog by mutableStateOf<ConfirmationDialog?>(null)
 
     val connection = SagerConnection(
@@ -113,6 +117,9 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
         quickSetupEntryPoint = savedInstanceState?.getString(QUICK_SETUP_RETURN_DESTINATION)
             ?.let { value -> runCatching { QuickSetupEntryPoint.valueOf(value) }.getOrNull() }
             ?: QuickSetupEntryPoint.INITIAL_ONBOARDING
+        whatsNewEntryPoint = savedInstanceState?.getString(WHATS_NEW_RETURN_DESTINATION)
+            ?.let { value -> runCatching { WhatsNewEntryPoint.valueOf(value) }.getOrNull() }
+            ?: WhatsNewEntryPoint.AUTOMATIC
 
         captureExternalIntent(intent)
 
@@ -161,6 +168,7 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
             QUICK_SETUP_RETURN_DESTINATION,
             quickSetupEntryPoint.name,
         )
+        outState.putString(WHATS_NEW_RETURN_DESTINATION, whatsNewEntryPoint.name)
         super.onSaveInstanceState(outState)
     }
 
@@ -206,7 +214,9 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
     fun onOnboardingFirstPageBack() {
         pendingExternalAction = null
         showWhatsNewAfterExternalAction = false
-        NavigationBus.open(Destination.Home)
+        val target = QuickSetupReturnPolicy.target(quickSetupEntryPoint, legacyPopCount = 1)
+        quickSetupEntryPoint = QuickSetupEntryPoint.INITIAL_ONBOARDING
+        returnOnboardingTo(target)
         finishStartupGate()
     }
 
@@ -215,8 +225,17 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
         if (startupInstallState == InstallState.FRESH_INSTALL) {
             DataStore.whatsNewVersion = WHATS_NEW_CONTENT_VERSION
         }
-        NavigationBus.open(Destination.Home)
+        val target = QuickSetupReturnPolicy.target(quickSetupEntryPoint, legacyPopCount = 1)
+        quickSetupEntryPoint = QuickSetupEntryPoint.INITIAL_ONBOARDING
+        returnOnboardingTo(target)
         finishStartupGate()
+    }
+
+    private fun returnOnboardingTo(target: QuickSetupReturnTarget) {
+        when (target) {
+            is QuickSetupReturnTarget.ToDestination -> NavigationBus.returnTo(target.destination)
+            is QuickSetupReturnTarget.PopScreens -> NavigationBus.returnToPrevious(target.count)
+        }
     }
 
     fun onOnboardingGetStarted() {
@@ -224,15 +243,18 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
         if (startupInstallState == InstallState.FRESH_INSTALL) {
             DataStore.whatsNewVersion = WHATS_NEW_CONTENT_VERSION
         }
-        if (quickSetupEntryPoint != QuickSetupEntryPoint.SETTINGS_OR_ABOUT) {
+        if (quickSetupEntryPoint != QuickSetupEntryPoint.SETTINGS &&
+            quickSetupEntryPoint != QuickSetupEntryPoint.ABOUT &&
+            quickSetupEntryPoint != QuickSetupEntryPoint.SETTINGS_OR_ABOUT
+        ) {
             quickSetupEntryPoint = QuickSetupEntryPoint.INITIAL_ONBOARDING
         }
         NavigationBus.open(Destination.QuickSetup)
     }
 
-    fun onQuickSetupCancelled(): Destination {
+    fun onQuickSetupCancelled(): QuickSetupReturnTarget {
         finishStartupGate()
-        return QuickSetupReturnPolicy.destination(quickSetupEntryPoint)
+        return quickSetupReturnDestination()
     }
 
     fun openQuickSetupFromProfiles() {
@@ -240,15 +262,20 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
         NavigationBus.open(Destination.QuickSetup)
     }
 
-    fun onQuickSetupFinished(result: QuickSetupResult): Destination {
+    fun onQuickSetupFinished(result: QuickSetupResult): QuickSetupReturnTarget {
         result.resultGroupId?.takeIf { it > 0L }?.let { groupId ->
             // Keep the actual operation target selected after import completes.
             DataStore.selectedGroup = groupId
             DataStore.editingGroup = groupId
         }
         finishStartupGate()
-        return QuickSetupReturnPolicy.destination(quickSetupEntryPoint)
+        return quickSetupReturnDestination()
     }
+
+    private fun quickSetupReturnDestination(): QuickSetupReturnTarget =
+        QuickSetupReturnPolicy.target(quickSetupEntryPoint, legacyPopCount = 2).also {
+            quickSetupEntryPoint = QuickSetupEntryPoint.INITIAL_ONBOARDING
+        }
 
     fun onWhatsNewOpened() {
         DataStore.whatsNewVersion = WHATS_NEW_CONTENT_VERSION
@@ -256,16 +283,29 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
 
     fun onWhatsNewDismissed() {
         DataStore.whatsNewVersion = WHATS_NEW_CONTENT_VERSION
-        NavigationBus.open(Destination.Home)
+        val destination = WhatsNewReturnPolicy.destination(whatsNewEntryPoint)
+        whatsNewEntryPoint = WhatsNewEntryPoint.AUTOMATIC
+        NavigationBus.returnTo(destination)
         if (startupGateActive) finishStartupGate() else requestStartupDialogs()
     }
 
     fun openOnboardingFromSettings() {
-        quickSetupEntryPoint = QuickSetupEntryPoint.SETTINGS_OR_ABOUT
+        quickSetupEntryPoint = QuickSetupEntryPoint.SETTINGS
+        NavigationBus.open(Destination.Onboarding)
+    }
+
+    fun openOnboardingFromAbout() {
+        quickSetupEntryPoint = QuickSetupEntryPoint.ABOUT
         NavigationBus.open(Destination.Onboarding)
     }
 
     fun openWhatsNewFromSettings() {
+        whatsNewEntryPoint = WhatsNewEntryPoint.SETTINGS
+        NavigationBus.open(Destination.WhatsNew)
+    }
+
+    fun openWhatsNewFromAbout() {
+        whatsNewEntryPoint = WhatsNewEntryPoint.ABOUT
         NavigationBus.open(Destination.WhatsNew)
     }
 
@@ -561,7 +601,7 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
     }
 
     fun openFaq() {
-        launchCustomTab("https://matsuridayo.github.io/")
+        launchCustomTab(ProjectLinks.README)
     }
 
     fun confirmServiceReload() {
@@ -734,6 +774,7 @@ class MainActivity : ThemedActivity(), SagerConnection.Callback {
     companion object {
         const val ACTION_SCAN_QR = "io.github.hhwkart.nami.action.SCAN_QR"
         private const val QUICK_SETUP_RETURN_DESTINATION = "quickSetupReturnDestination"
+        private const val WHATS_NEW_RETURN_DESTINATION = "whatsNewReturnDestination"
         private val localNetworkPermissionTransition = LocalNetworkPermissionTransition()
     }
 }

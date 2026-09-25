@@ -161,7 +161,7 @@ object LiquidGlassPolicy {
         } else {
             InterfaceStyle.STANDARD
         }
-        val quality = LiquidGlassQuality.fromPersisted(DataStore.liquidGlassQuality)
+        val quality = LiquidGlassQuality.AUTO
         val isLowRamDevice = context.getSystemService(ActivityManager::class.java)
             ?.isLowRamDevice == true
         val animationsEnabled = areSystemAnimationsEnabled(context)

@@ -1,5 +1,6 @@
 package io.github.hhwkart.nami.ui.compose.settings
 
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.hhwkart.nami.Key
@@ -17,12 +18,17 @@ private const val DOMAIN_STRATEGY_REMOTE = "domain_strategy_for_remote"
 private const val DOMAIN_STRATEGY_DIRECT = "domain_strategy_for_direct"
 private const val DOMAIN_STRATEGY_SERVER = "domain_strategy_for_server"
 
+private fun standardThemeMode(): Int = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    Key.THEME_MODE_DYNAMIC
+} else {
+    Key.THEME_MODE_CLASSIC
+}
+
 data class SettingsUiState(
     val themeMode: Int = DataStore.themeMode,
     val dynamicColors: Boolean = DataStore.composeDynamicColors,
     val amoledDark: Boolean = DataStore.amoledDark,
     val interfaceStyle: Int = DataStore.interfaceStyle,
-    val liquidGlassQuality: Int = DataStore.liquidGlassQuality,
     val autoConnect: Boolean = DataStore.persistAcrossReboot,
     val appTheme: Int = DataStore.appTheme,
     val nightTheme: Int = DataStore.nightTheme,
@@ -171,20 +177,6 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
             interfaceStyle = Key.INTERFACE_STYLE_STANDARD,
         )
     }
-    fun setDynamicColors(value: Boolean) = update(
-        {
-            DataStore.composeDynamicColors = value
-            DataStore.themeMode = if (value) Key.THEME_MODE_DYNAMIC else Key.THEME_MODE_GREEN
-            DataStore.interfaceStyle = Key.INTERFACE_STYLE_STANDARD
-        },
-        SettingsEffect.ThemeChanged,
-    ) {
-        copy(
-            dynamicColors = value,
-            themeMode = if (value) Key.THEME_MODE_DYNAMIC else Key.THEME_MODE_GREEN,
-            interfaceStyle = Key.INTERFACE_STYLE_STANDARD,
-        )
-    }
     fun setAmoledDark(value: Boolean) = update(
         { DataStore.amoledDark = value },
         SettingsEffect.ThemeChanged,
@@ -194,7 +186,7 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
             val style = io.github.hhwkart.nami.ui.compose.style.InterfaceStyle.fromPersisted(value)
             DataStore.interfaceStyle = style.persistedValue
             DataStore.themeMode = if (style == io.github.hhwkart.nami.ui.compose.style.InterfaceStyle.STANDARD) {
-                Key.THEME_MODE_GREEN
+                standardThemeMode()
             } else {
                 Key.THEME_MODE_LIQUID_GLASS
             }
@@ -205,16 +197,12 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
         copy(
             interfaceStyle = style.persistedValue,
             themeMode = if (style == io.github.hhwkart.nami.ui.compose.style.InterfaceStyle.STANDARD) {
-                Key.THEME_MODE_GREEN
+                standardThemeMode()
             } else {
                 Key.THEME_MODE_LIQUID_GLASS
             },
         )
     }
-    fun setLiquidGlassQuality(value: Int) = update(
-        { DataStore.liquidGlassQuality = io.github.hhwkart.nami.ui.compose.style.LiquidGlassQuality.fromPersisted(value).persistedValue },
-        SettingsEffect.AppearanceChanged,
-    ) { copy(liquidGlassQuality = io.github.hhwkart.nami.ui.compose.style.LiquidGlassQuality.fromPersisted(value).persistedValue) }
     fun setAutoConnect(value: Boolean) = update({ DataStore.configurationStore.putBoolean(Key.PERSIST_ACROSS_REBOOT, value) }) { copy(autoConnect = value) }
     fun setAppTheme(value: Int) = setClassicTheme(value)
     fun setNightTheme(value: Int) = update({ DataStore.nightTheme = value }, SettingsEffect.ThemeChanged) { copy(nightTheme = value) }

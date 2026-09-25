@@ -174,6 +174,7 @@ fun NamiCard(
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     tint: androidx.compose.ui.graphics.Color? = null,
+    showMaterialBorder: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val visualStyle = LocalNamiVisualStyle.current
@@ -197,7 +198,11 @@ fun NamiCard(
             shape = shape,
             color = tint ?: MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 2.dp,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+            border = if (showMaterialBorder) {
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+            } else {
+                null
+            },
         ) {
             Box(content = content)
         }

@@ -98,8 +98,6 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var themeMode by configurationStore.int(Key.THEME_MODE) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && composeDynamicColors) {
             Key.THEME_MODE_DYNAMIC
-        } else if (composeDynamicColors) {
-            Key.THEME_MODE_GREEN
         } else {
             Key.THEME_MODE_CLASSIC
         }

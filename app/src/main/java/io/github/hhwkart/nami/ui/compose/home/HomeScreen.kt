@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,7 +61,7 @@ import io.github.hhwkart.nami.ktx.app
 import io.github.hhwkart.nami.ui.compose.style.NamiCard
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(bottomBarPadding: Dp = 0.dp, viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val layoutDirection = LocalLayoutDirection.current
 
@@ -71,7 +72,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 start = contentPadding.calculateStartPadding(layoutDirection) + 16.dp,
                 top = contentPadding.calculateTopPadding() + 8.dp,
                 end = contentPadding.calculateEndPadding(layoutDirection) + 16.dp,
-                bottom = contentPadding.calculateBottomPadding() + 24.dp,
+                bottom = contentPadding.calculateBottomPadding() + 24.dp + bottomBarPadding,
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

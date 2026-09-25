@@ -30,7 +30,6 @@ import androidx.compose.foundation.verticalScroll
 import io.github.hhwkart.nami.ui.compose.theme.tvFocusable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PlayArrow
@@ -64,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
@@ -92,6 +92,7 @@ fun ProfilesScreen(
     onEditProfile: (ProfileUi) -> Unit,
     onAddProfile: () -> Unit,
     onQuickSetup: () -> Unit = {},
+    bottomBarPadding: Dp = 0.dp,
     viewModel: ProfilesViewModel = hiltViewModel(),
     testViewModel: ConnectionTestViewModel = hiltViewModel(),
 ) {
@@ -224,7 +225,7 @@ fun ProfilesScreen(
                     .weight(1f)
                     .fillMaxWidth(),
                 contentPadding = PaddingValues(
-                    bottom = contentPadding.calculateBottomPadding() + 16.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp + bottomBarPadding,
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -585,28 +586,27 @@ private fun ProfileCard(
         backgroundContent = {
             val color = when (dismissState.dismissDirection) {
                 SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
-                else -> MaterialTheme.colorScheme.secondaryContainer
-            }
-            val icon = when (dismissState.dismissDirection) {
-                SwipeToDismissBoxValue.EndToStart -> Icons.Filled.Delete
-                else -> Icons.Filled.Edit
+                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
+                else -> MaterialTheme.colorScheme.surfaceContainer
             }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(color, MaterialTheme.shapes.medium),
+                    .clip(MaterialTheme.shapes.large)
+                    .background(color, MaterialTheme.shapes.large),
                 contentAlignment = when (dismissState.dismissDirection) {
                     SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
                     else -> Alignment.CenterStart
                 },
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                )
+                if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                }
             }
         },
         enableDismissFromStartToEnd = profile.canEdit && !profile.running,
@@ -642,6 +642,7 @@ private fun ProfileCardContent(
     var actionsExpanded by remember { mutableStateOf(false) }
     NamiCard(
         onClick = onConnect,
+        showMaterialBorder = group.type != GroupType.SUBSCRIPTION,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)

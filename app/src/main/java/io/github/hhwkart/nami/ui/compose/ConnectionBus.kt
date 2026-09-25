@@ -69,7 +69,13 @@ object ConnectionBus {
     }
 }
 
-/** One-shot navigation requests from Android entry points such as app shortcuts. */
+sealed interface NavigationRequest {
+    data class Open(val destination: Destination) : NavigationRequest
+    data class ReturnTo(val destination: Destination) : NavigationRequest
+    data class ReturnToPrevious(val screenCount: Int) : NavigationRequest
+}
+
+/** One-shot navigation requests from Android entry points and transient flows. */
 object NavigationBus {
     // Navigation is an event, not durable UI state. A StateFlow could suppress a
     // repeated request for the same destination (for example Home after Quick
@@ -77,10 +83,18 @@ object NavigationBus {
     // Navigation requests are infrequent and small; an unbounded channel is
     // preferable to silently dropping a deep-link/startup request when the
     // NavHost is briefly busy processing another transition.
-    private val _destination = Channel<Destination>(capacity = Channel.UNLIMITED)
-    val destination: Flow<Destination> = _destination.receiveAsFlow()
+    private val _requests = Channel<NavigationRequest>(capacity = Channel.UNLIMITED)
+    val requests: Flow<NavigationRequest> = _requests.receiveAsFlow()
 
     fun open(destination: Destination) {
-        _destination.trySend(destination)
+        _requests.trySend(NavigationRequest.Open(destination))
+    }
+
+    fun returnTo(destination: Destination) {
+        _requests.trySend(NavigationRequest.ReturnTo(destination))
+    }
+
+    fun returnToPrevious(screenCount: Int = 1) {
+        _requests.trySend(NavigationRequest.ReturnToPrevious(screenCount.coerceAtLeast(1)))
     }
 }

@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,6 +70,8 @@ fun RoutingScreen(
     onEditRule: (RuleUi) -> Unit,
     onAdvanced: () -> Unit,
     onReloadRequired: () -> Unit,
+    onForceConfigReloadRequired: () -> Unit = onReloadRequired,
+    bottomBarPadding: Dp = 0.dp,
     viewModel: RoutingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -140,7 +143,7 @@ fun RoutingScreen(
                 start = contentPadding.calculateStartPadding(layoutDirection),
                 top = contentPadding.calculateTopPadding() + 4.dp,
                 end = contentPadding.calculateEndPadding(layoutDirection),
-                bottom = contentPadding.calculateBottomPadding() + 24.dp,
+                bottom = contentPadding.calculateBottomPadding() + 24.dp + bottomBarPadding,
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -193,7 +196,7 @@ fun RoutingScreen(
             WebsiteBypassSection(
                 state = state,
                 viewModel = viewModel,
-                onReloadRequired = onReloadRequired,
+                onReloadRequired = onForceConfigReloadRequired,
             )
         }
         item {

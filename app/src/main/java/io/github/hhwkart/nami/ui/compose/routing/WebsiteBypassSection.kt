@@ -60,6 +60,7 @@ private fun WebsiteBypassContent(
     viewModel: RoutingViewModel,
     onReloadRequired: () -> Unit,
 ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         ListItem(
             leadingContent = { Icon(Icons.Filled.Language, contentDescription = null) },
             headlineContent = { Text(stringResource(R.string.website_bypass_title)) },
@@ -82,7 +83,9 @@ private fun WebsiteBypassContent(
         )
         if (state.websiteBypassEnabled && !state.websiteBypassRequiresVpn) {
             Column(
-                modifier = Modifier.padding(start = 16.dp, end = 8.dp, bottom = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 8.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -134,3 +137,4 @@ private fun WebsiteBypassContent(
             )
         }
     }
+}

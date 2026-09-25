@@ -10,12 +10,12 @@ class ThemeAppearancePolicyTest {
     @Test
     fun appearanceDraftKeepsAmoledIndependentFromMode() {
         val classic = ThemeAppearancePolicy.resolve(Key.THEME_MODE_CLASSIC, amoledDark = true)
-        val green = ThemeAppearancePolicy.resolve(Key.THEME_MODE_GREEN, amoledDark = false)
+        val dynamic = ThemeAppearancePolicy.resolve(Key.THEME_MODE_DYNAMIC, amoledDark = false)
 
         assertTrue(classic.amoledDark)
         assertFalse(classic.dynamicColors)
-        assertFalse(green.amoledDark)
-        assertFalse(green.dynamicColors)
+        assertFalse(dynamic.amoledDark)
+        assertTrue(dynamic.dynamicColors)
     }
 
     @Test

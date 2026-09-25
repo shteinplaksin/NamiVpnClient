@@ -60,6 +60,7 @@ object Key {
     const val THEME_MODE = "themeMode"
     const val THEME_MODE_DYNAMIC = 0
     const val THEME_MODE_CLASSIC = 1
+    // Retained only to migrate installs that persisted the former green default.
     const val THEME_MODE_GREEN = 2
     const val THEME_MODE_LIQUID_GLASS = 3
 

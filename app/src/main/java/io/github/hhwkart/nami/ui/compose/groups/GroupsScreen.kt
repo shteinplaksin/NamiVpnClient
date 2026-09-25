@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -81,6 +82,7 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun GroupsScreen(
     onEditGroup: (GroupUi) -> Unit,
+    bottomBarPadding: Dp = 0.dp,
     viewModel: GroupsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -158,7 +160,7 @@ fun GroupsScreen(
                 start = contentPadding.calculateStartPadding(layoutDirection),
                 top = contentPadding.calculateTopPadding() + 4.dp,
                 end = contentPadding.calculateEndPadding(layoutDirection),
-                bottom = contentPadding.calculateBottomPadding() + 24.dp,
+                bottom = contentPadding.calculateBottomPadding() + 24.dp + bottomBarPadding,
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {

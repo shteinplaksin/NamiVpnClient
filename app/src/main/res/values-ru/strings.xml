@@ -459,10 +459,6 @@
 <string name="settings_interface_style_standard">Стандартный</string>
 <string name="settings_interface_style_regular_glass">Regular Glass</string>
 <string name="settings_interface_style_clear_glass">Clear Glass</string>
-<string name="settings_liquid_glass_quality">Эффекты Liquid Glass</string>
-<string name="settings_liquid_glass_quality_auto">Автоматически</string>
-<string name="settings_liquid_glass_quality_full">Полные</string>
-<string name="settings_liquid_glass_quality_reduced">Упрощённые</string>
 <string name="tile_title">Переключатель</string>
 <string name="tls">Использовать TLS</string>
 <string name="tls_camouflage_settings">Настройки защиты TLS</string>

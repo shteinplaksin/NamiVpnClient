@@ -8,8 +8,6 @@ import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -64,13 +62,12 @@ fun NamiAlertDialog(
             LiquidGlassTier.BLUR,
             LiquidGlassTier.BLUR_AND_LENS,
         ) && supportsWindowBlur
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(
-        alpha = when {
-            !visualStyle.isClearGlass -> 1f
-            useGlassBlur -> 0.76f
-            else -> 0.92f
-        },
-    )
+    val dialogSurface = MaterialTheme.colorScheme.surfaceContainerHigh
+    val containerColor = when {
+        !visualStyle.isClearGlass -> dialogSurface
+        useGlassBlur -> dialogSurface.copy(alpha = 0.76f)
+        else -> dialogSurface.copy(alpha = 0.92f)
+    }
     AlertDialog(
         onDismissRequest = onDismissRequest,
         modifier = modifier
@@ -81,18 +78,7 @@ fun NamiAlertDialog(
                     Modifier
                 },
             )
-            .shadow(if (visualStyle.liquidEnabled) 24.dp else 12.dp, shape)
-            .border(
-                BorderStroke(
-                    1.dp,
-                    if (visualStyle.liquidEnabled) {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)
-                    } else {
-                        MaterialTheme.colorScheme.outlineVariant
-                    },
-                ),
-                shape,
-            ),
+            .shadow(if (visualStyle.liquidEnabled) 24.dp else 12.dp, shape),
         icon = icon,
         title = title,
         text = text,

@@ -669,17 +669,12 @@
     <string name="settings_theme_mode">Theme mode</string>
     <string name="settings_theme_mode_dynamic">Material You (Dynamic color)</string>
     <string name="settings_theme_mode_classic">Classic themes</string>
-    <string name="settings_theme_mode_green">Green (Default)</string>
     <string name="settings_theme_mode_liquid_glass">Liquid Glass</string>
     <string name="settings_interface_style">Interface style</string>
     <string name="settings_interface_style_summary">Choose Standard, Regular Glass, or Clear Glass</string>
     <string name="settings_interface_style_standard">Standard</string>
     <string name="settings_interface_style_regular_glass">Regular Glass</string>
     <string name="settings_interface_style_clear_glass">Clear Glass</string>
-    <string name="settings_liquid_glass_quality">Liquid Glass effects</string>
-    <string name="settings_liquid_glass_quality_auto">Auto</string>
-    <string name="settings_liquid_glass_quality_full">Full</string>
-    <string name="settings_liquid_glass_quality_reduced">Reduced</string>
     <string name="settings_classic_palette">Classic theme palette</string>
     <string name="settings_classic_palette_summary">Select one of 21 classic color schemes</string>
     <string name="settings_dynamic_colors">Dynamic colors</string>

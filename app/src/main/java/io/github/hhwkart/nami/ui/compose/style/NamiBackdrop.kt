@@ -245,12 +245,16 @@ fun NamiGlassOverlay(
 ) {
     val colors = MaterialTheme.colorScheme
     val visualStyle = LocalNamiVisualStyle.current
-    val useClearTreatment = visualStyle.isClearGlass && (
+    val isSelectedIndicator = surfaceRole == GlassSurfaceRole.SELECTED_INDICATOR
+    val selectedLensSupported = isSelectedIndicator && (
+        visualStyle.effectiveTier == LiquidGlassTier.BLUR ||
+            visualStyle.effectiveTier == LiquidGlassTier.BLUR_AND_LENS
+        )
+    val useClearTreatment = (visualStyle.isClearGlass || selectedLensSupported) && (
         surfaceRole == GlassSurfaceRole.NAVIGATION ||
             surfaceRole == GlassSurfaceRole.SELECTED_INDICATOR ||
             surfaceRole == GlassSurfaceRole.CONTROL
         )
-    val isSelectedIndicator = surfaceRole == GlassSurfaceRole.SELECTED_INDICATOR
     // Clear Glass cards/dialog-like surfaces can remain translucent even when
     // they do not have a safe root backdrop source. Standard surfaces keep the
     // old opaque fallback so legacy screens do not become unreadable.
@@ -275,9 +279,9 @@ fun NamiGlassOverlay(
                     // local vibrancy, bend the sampled backdrop, and add
                     // chromatic dispersion around the rounded silhouette.
                     vibrancy()
-                    // A sharp source makes the displacement at the rim
-                    // legible; a wide blur used to hide that distortion.
-                    blur(if (isSelectedIndicator) 1.dp.toPx() else 7.dp.toPx())
+                    // Blur the selected text immediately while preserving the
+                    // refraction detail at the pill's glass edge.
+                    blur(if (isSelectedIndicator) 10.dp.toPx() else 7.dp.toPx())
                     if (visualStyle.effectiveTier == LiquidGlassTier.BLUR_AND_LENS) {
                         lens(
                             refractionHeight = (if (isSelectedIndicator) 9 else 24).dp.toPx(),

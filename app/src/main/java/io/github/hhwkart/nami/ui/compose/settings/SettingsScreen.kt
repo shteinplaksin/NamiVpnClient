@@ -60,6 +60,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -120,6 +121,7 @@ fun SettingsScreen(
     onServiceModeChanged: () -> Unit = {},
     onClashApiChanged: (Boolean) -> Unit = {},
     onProxyAppsChanged: () -> Unit = onOpenPerApp,
+    bottomBarPadding: Dp = 0.dp,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -179,7 +181,7 @@ fun SettingsScreen(
                 start = contentPadding.calculateStartPadding(layoutDirection),
                 top = contentPadding.calculateTopPadding() + 4.dp,
                 end = contentPadding.calculateEndPadding(layoutDirection),
-                bottom = contentPadding.calculateBottomPadding() + 24.dp,
+                bottom = contentPadding.calculateBottomPadding() + 24.dp + bottomBarPadding,
             ),
         ) {
         item { SectionTitle(stringResource(R.string.settings_section_appearance)) }
@@ -191,8 +193,9 @@ fun SettingsScreen(
                     stringResource(R.string.settings_theme_mode_classic)
                 state.themeMode == Key.THEME_MODE_LIQUID_GLASS ->
                     stringResource(R.string.settings_theme_mode_liquid_glass)
-                else ->
-                    stringResource(R.string.settings_theme_mode_green)
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+                    stringResource(R.string.settings_theme_mode_dynamic)
+                else -> stringResource(R.string.settings_theme_mode_classic)
             }
             SettingChoiceItem(
                 stringResource(R.string.settings_theme_mode),
@@ -201,34 +204,6 @@ fun SettingsScreen(
                     showThemeModeDialog = true
                 },
             )
-        }
-        if (state.themeMode == Key.THEME_MODE_LIQUID_GLASS) {
-            item {
-                val qualityOptions = listOf(
-                    context.getString(R.string.settings_liquid_glass_quality_auto) to
-                        Key.LIQUID_GLASS_QUALITY_AUTO.toString(),
-                    context.getString(R.string.settings_liquid_glass_quality_full) to
-                        Key.LIQUID_GLASS_QUALITY_FULL.toString(),
-                    context.getString(R.string.settings_liquid_glass_quality_reduced) to
-                        Key.LIQUID_GLASS_QUALITY_REDUCED.toString(),
-                )
-                val qualityLabel = qualityOptions.firstOrNull {
-                    it.second == state.liquidGlassQuality.toString()
-                }?.first ?: context.getString(R.string.settings_liquid_glass_quality_auto)
-                SettingChoiceItem(
-                    stringResource(R.string.settings_liquid_glass_quality),
-                    qualityLabel,
-                ) {
-                    choiceDialog = ChoiceDialogData(
-                        context.getString(R.string.settings_liquid_glass_quality),
-                        qualityOptions,
-                        state.liquidGlassQuality.toString(),
-                    ) { value ->
-                        viewModel.setLiquidGlassQuality(value.toIntOrNull()
-                            ?: Key.LIQUID_GLASS_QUALITY_AUTO)
-                    }
-                }
-            }
         }
         if (state.themeMode == Key.THEME_MODE_CLASSIC) {
             item {
@@ -240,10 +215,10 @@ fun SettingsScreen(
             }
         }
         item {
-            val nightThemeLabel = getArrayLabel(context, R.array.night_mode, R.array.int_array_4, state.nightTheme)
+            val nightThemeLabel = getArrayLabel(context, R.array.night_mode, R.array.int_array_3, state.nightTheme)
             SettingChoiceItem(
                 stringResource(R.string.night_mode), nightThemeLabel,
-                onClick = { choiceDialog = arrayChoice(context, R.string.night_mode, R.array.night_mode, R.array.int_array_4, state.nightTheme.toString(), viewModel::setNightTheme) },
+                onClick = { choiceDialog = arrayChoice(context, R.string.night_mode, R.array.night_mode, R.array.int_array_3, state.nightTheme.toString(), viewModel::setNightTheme) },
             )
         }
         item {
@@ -803,7 +778,6 @@ private fun themeModeOptionsForDialog(context: android.content.Context): List<Pa
         add(context.getString(R.string.settings_theme_mode_dynamic) to Key.THEME_MODE_DYNAMIC.toString())
     }
     add(context.getString(R.string.settings_theme_mode_classic) to Key.THEME_MODE_CLASSIC.toString())
-    add(context.getString(R.string.settings_theme_mode_green) to Key.THEME_MODE_GREEN.toString())
     add(context.getString(R.string.settings_theme_mode_liquid_glass) to Key.THEME_MODE_LIQUID_GLASS.toString())
 }
 
@@ -819,7 +793,11 @@ private fun ThemeModeDialog(
     var draftMode by remember(initialMode, options) {
         mutableStateOf(
             initialMode.toString().takeIf { it in availableModeValues }
-                ?: Key.THEME_MODE_GREEN.toString(),
+                ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    Key.THEME_MODE_DYNAMIC.toString()
+                } else {
+                    Key.THEME_MODE_CLASSIC.toString()
+                },
         )
     }
     var draftAmoled by remember(initialAmoledDark) { mutableStateOf(initialAmoledDark) }
@@ -870,7 +848,11 @@ private fun ThemeModeDialog(
             TextButton(
                 onClick = {
                     onApply(
-                        draftMode.toIntOrNull() ?: Key.THEME_MODE_GREEN,
+                        draftMode.toIntOrNull() ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            Key.THEME_MODE_DYNAMIC
+                        } else {
+                            Key.THEME_MODE_CLASSIC
+                        },
                         draftAmoled,
                     )
                 },

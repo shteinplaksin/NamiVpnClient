@@ -351,7 +351,6 @@
         <item>@string/follow_system</item>
         <item>@string/enable</item>
         <item>@string/disable</item>
-        <item>@string/auto</item>
     </string-array>
     <string-array name="ipv6_mode">
         <item>@string/disable</item>

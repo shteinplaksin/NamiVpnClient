@@ -519,10 +519,6 @@
     <string name="settings_mtu_invalid">请输入 576 到 65535 之间的 MTU。</string>
     <string name="settings_proxy_port_invalid">请输入 1 到 65535 之间的端口号。</string>
     <string name="settings_theme_mode_liquid_glass">Liquid Glass</string>
-    <string name="settings_liquid_glass_quality">Liquid Glass 效果</string>
-    <string name="settings_liquid_glass_quality_auto">自动</string>
-    <string name="settings_liquid_glass_quality_full">完整效果</string>
-    <string name="settings_liquid_glass_quality_reduced">精简效果</string>
     <string name="lan_proxy_credentials_title">局域网代理凭据</string>
     <string name="lan_proxy_credentials_summary">请将这些临时凭据与上方显示的混合代理端口配合使用。代理服务每次启动时都会重新生成凭据。</string>
     <string name="lan_proxy_credentials_connect_first">连接代理服务后可查看当前局域网凭据。</string>
